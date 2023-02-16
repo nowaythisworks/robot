@@ -1,0 +1,130 @@
+<head>
+    <style>
+        html {
+            color: white;
+            background: black;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="status">Loading...</div>
+    <input type="button" value="interaction" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"></script>
+    <script>
+        const speak = function (text) {
+            console.log(text);
+            const msg = new SpeechSynthesisUtterance();
+            msg.text = text;
+            window.speechSynthesis.speak(msg);
+        }
+
+        const getTimeAsWord = function () {
+            // get time as morning, afternoon, evening
+            const hours = new Date().getHours();
+
+            if (hours < 12) { return "morning"; }
+            else if (hours < 18) { return "afternoon"; }
+            else { return "evening"; }
+        }
+
+        const getTimeAsPhrase = function () {
+            // get time as "eleven fifty-six PM"
+            let hours = new Date().getHours();
+            let minutes = new Date().getMinutes();
+            let AMorPM = hours < 12 ? "AM" : "PM";
+
+            // convert to 12 hour:
+            if (hours > 12) hours -= 12;
+            if (hours == 0) hours = 12;
+
+            return hours + ":" + minutes + " " + AMorPM;
+        }
+
+        var rawWeatherData;
+        const getWeatherInfo = function (daysFromNow=0) {
+            console.log("Updating Weather Info...");
+
+            var url = "https://api.weather.gov/gridpoints/MTR/90,69/forecast";
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", url);
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    console.log(xhr.status);
+                    let rawJSON = JSON.parse(xhr.responseText);
+
+                    rawWeatherData = rawJSON;
+
+                    console.log("Successfully Retreived Weater Info.");
+                }
+            };
+
+            xhr.send();
+
+            // repeat getWeatherInfo once every 30 minutes
+            setInterval(getWeatherInfo, 1000 * 60 * 30);
+        }
+
+        getWeatherInfo();
+
+        const processCommand = function (cmd) {
+            console.log(cmd);
+            // 
+            //  GENERIC GREETINGS
+            // 
+            if (cmd.includes("hello") || cmd.includes("hi") || cmd.includes("hey")) {
+                speak("Good " + getTimeAsWord());
+            }
+            else if (cmd.includes("how are you") || cmd.includes("how's it")) {
+                speak("I'm doing great.");
+            }
+
+            // 
+            //  TIME RELATED
+            // 
+            else if (cmd.includes("what time") || cmd.includes("what's the time") || cmd.includes("what's the hour")) {
+                speak("It's " + getTimeAsPhrase());
+            }
+            else if (cmd.includes("what day is it") || cmd.includes("what's the day")) {
+                speak("It's " + new Date().toDateString());
+            }
+            else if (cmd.includes("what month is it") || cmd.includes("what's the month")) {
+                speak("It's " + new Date().getMonth());
+            }
+            else if (cmd.includes("what year is it") || cmd.includes("what's the year")) {
+                speak("It's " + new Date().getFullYear());
+            }
+
+            // 
+            // WEATHER RELATED
+            // 
+            else if (cmd.includes("what's the weather") || cmd.includes("what's the temperature")) {
+
+                let temp = rawWeatherData.properties.periods[0].temperature;
+                let forecast = rawWeatherData.properties.periods[0].detailedForecast;
+
+                speak("The temperature is " + temp + " degrees, which is " + forecast);
+
+            }
+
+            // META
+            else speak("I'm sorry, I don't understand.");
+        }
+
+        if (annyang) {
+            var commands = {
+                'jarvis *cmd': processCommand,
+            };
+
+            annyang.addCommands(commands);
+
+            annyang.start();
+
+            document.getElementById('status').innerHTML = 'Started.';
+        }
+    </script>
+
+</body>
